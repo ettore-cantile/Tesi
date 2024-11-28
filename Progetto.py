@@ -105,7 +105,7 @@ def main():
     execution_time = end_time - start_time
     print(f"Tempo di esecuzione: {execution_time:.2f} secondi") #formattazione a due decimali
     
- #si impiegano circa 23 minuti per eseguire il codice e recuperare la chiave, la quale differisce per 3 byte, ma si può sfruttare un attacco brute force per ottenerli.
+ #si impiegano circa 20 minuti per eseguire il codice e recuperare la chiave, la quale differisce per 3 byte, ma si può sfruttare un attacco brute force per ottenerli.
 if __name__ == "__main__":
     main()
     
