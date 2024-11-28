@@ -1,30 +1,30 @@
 import json
 import numpy as np  #utilizzato per gestire gli array e effettuare operazioni in modo più efficiente
-import time  # Importa il modulo time
+import time  #importa la libreria time
 
 def intermedio(byte_pt, byte_chiave_ipotetica, sbox):
-    # Restituisce il valore dell'S-box per il byte del plaintext e l'ipotesi di chiave
+    #restituisce il valore dell'S-box per il byte del plaintext e l'ipotesi di chiave
     return sbox[byte_pt ^ byte_chiave_ipotetica] #si ottiene tramite operazione XOR
 
 def modello_potenza(valore_intermedio):
-    # Calcola il peso di Hamming del valore intermedio
+    #calcola il peso di Hamming del valore intermedio
     return np.sum(np.unpackbits(np.array([valore_intermedio], dtype=np.uint8)))
 
 def calcola_correlazione_ipotetica(byte_chiave_ipotetica, indice_byte, tracce, plaintexts, sbox):
-    # Calcolo del modello di potenza per ogni plaintext
+    #calcolo del modello di potenza per ogni plaintext
     modello_utilizzato = np.array([
         modello_potenza(intermedio(plaintext[indice_byte], byte_chiave_ipotetica, sbox))
         for plaintext in plaintexts
     ])
 
-    # Conversione delle tracce in un array numpy
+    #conversione delle tracce in un array numpy
     tracce = np.array(tracce)
 
-    # Calcolo delle correlazioni per ogni punto di misura nelle tracce
+    #calcolo delle correlazioni per ogni punto di misura nelle tracce
     correlazioni = []
     for indice_punto in range(tracce.shape[1]):   #si sceglie il punto di misura della traccia
         misurazioni = tracce[:, indice_punto]   #si estrae il punto di misura corrente da tutte le tracce, si genera un array di misurazioni
-        if np.std(misurazioni) != 0:  # si verifica che la deviazione standard sia diversa da 0.
+        if np.std(misurazioni) != 0:  #si verifica che la deviazione standard sia diversa da 0.
             correlazioni.append(
                 np.abs(np.corrcoef(modello_utilizzato, misurazioni)[0, 1]) #permette il calcolo di media e deviazione standard in un'unica operazione
             )           #si considera il valore assoluto tramite .abs
@@ -35,43 +35,43 @@ def calcola_correlazione_ipotetica(byte_chiave_ipotetica, indice_byte, tracce, p
     return np.max(correlazioni)
 
 def trova_byte_chiave_corretto(indice_byte, tracce, plaintexts, sbox):
-    # Inizializza la correlazione massima e la chiave corrispondente al valore massimo
+    #inizializza la correlazione massima e la chiave corrispondente al valore massimo
     coefficiente_massimo, miglior_chiave_ipotetica = 0, 0
 
-    # Prova ogni possibile valore del byte della chiave (0-255)
+    #prova ogni possibile valore per ogni byte della chiave (0-255)
     for byte_chiave_ipotetica in range(256):
         coefficiente_ipotetico = calcola_correlazione_ipotetica(byte_chiave_ipotetica, indice_byte, tracce, plaintexts, sbox)
         if coefficiente_ipotetico > coefficiente_massimo:
             coefficiente_massimo, miglior_chiave_ipotetica = coefficiente_ipotetico, byte_chiave_ipotetica
 
-    # Restituisce la migliore chiave ipotizzata e la correlazione ad essa associata
+    #restituisce la migliore chiave ipotizzata e la correlazione ad essa associata
     return miglior_chiave_ipotetica, coefficiente_massimo
 
 def trova_chiave(tracce, plaintexts, sbox):
     chiave = []
 
-    # Analizza ogni byte della chiave (16 byte in totale)
+    #analizza ogni byte della chiave (16 byte in totale)
     for indice in range(16):
         chiave_ipotetica, coefficiente = trova_byte_chiave_corretto(indice, tracce, plaintexts, sbox)
         chiave.append((chiave_ipotetica, coefficiente))
         #vengono create due liste per le stampe
-        print(f"Coefficienti: {[f'{x[1]:.2f}' for x in chiave]}") # con x[i] ci riferiamo all'i-esimo elemento della lista
+        print(f"Coefficienti: {[f'{x[1]:.2f}' for x in chiave]}") #con x[i] ci riferiamo all'i-esimo elemento della lista
         print(f"Chiave ipotetica: {[f'0x{x[0]:02x}' for x in chiave]}") #formattazione che stampa le chiavi ipotetiche in formato esadecimale
 
-    # al termine del for si restituisce la chiave completa
+    #al termine del for si restituisce la chiave completa
     return [x[0] for x in chiave]
 
 def main():
     #si fa partire il tempo
     start_time = time.time()
-    # vengono caricati i plaintext e le tracce dal file JSON
+    #vengono caricati i plaintext e le tracce dal file JSON
     with open('traces.json') as f:
         dati = json.load(f)
 
     plaintexts = dati["plaintexts"]
     tracce = dati["traces"]
 
-    # viene definita la S-box, tabella di 256 valori (matrice 16 x 16) che può essere utile per la sostituzione dei byte nelle operazioni di cifratura e decifratura
+    #viene definita la S-box, tabella di 256 valori (matrice 16 x 16) che può essere utile per la sostituzione dei byte nelle operazioni di cifratura e decifratura
     sbox = (
         0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
         0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -91,17 +91,17 @@ def main():
         0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
     )
 
-    # chiave effettiva utilizzata dall'algoritmo, la quale viene stampata sempre in formato esadecimale con il prefisso 0x
+    #chiave effettiva utilizzata dall'algoritmo, la quale viene stampata sempre in formato esadecimale con il prefisso 0x
     chiave_effettiva = [0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c]
     print(f"Chiave effettiva: {[f'0x{x:02x}' for x in chiave_effettiva]}")
 
-    # si lancia la funzione per il recupero della chiave e successivamente viene stampato a schermo il miglior byte di chiave ipotizzato
+    #si lancia la funzione per il recupero della chiave e successivamente viene stampato a schermo il miglior byte di chiave ipotizzato
     chiave_recuperata = trova_chiave(tracce, plaintexts, sbox)
     print(f"Chiave recuperata: {[f'0x{x:02x}' for x in chiave_recuperata]}")   
     
     end_time = time.time()
 
-    # viene calcolato e successivamente stampato il tempo di esecuzione del codice
+    #viene calcolato e successivamente stampato il tempo di esecuzione del codice
     execution_time = end_time - start_time
     print(f"Tempo di esecuzione: {execution_time:.2f} secondi") #formattazione a due decimali
     
